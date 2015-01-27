@@ -36,7 +36,7 @@ class Command(BaseCommand):
         from entry.models import Entry
         t0= time()
         discardedStories = 0
-        item = Entry.objects.order_by("-approved_on")[:1200]
+        item = Entry.objects.order_by("-approved_on")[:400]
         #storySoup= str(item[i].title+item[i].section+item[i].topic+item[i].industry+item[i].body_html+item[i].primary_topic+item[i].primary_industry+item[i].auto_tagged_topic+item[i].auto_tagged_industry)
         storySoup = item.values_list('body_html', flat=True)
         storyTitle = item.values_list('title', flat=True)
@@ -66,7 +66,7 @@ class Command(BaseCommand):
         labels_pred = km.labels_
         print('\x1b[1;31m'+"Stories Clustered in  in %fs" % (time() - t0)+'\x1b[0m')
 
-        # score
+        # cluster items
         for k in np.unique(km.labels_):
             if(not math.isnan(k)):
                 members = np.where(km.labels_ == k)  
@@ -75,10 +75,21 @@ class Command(BaseCommand):
                 continue    
             else:
                 pass
-            for item in members[0]:
-                storyScore[item]=random(0,1)
+            largest = 0
+            for it in members[0]:
+                r = random()
+                #r = getScore()
+                o = Entry.objects.order_by("-approved_on").filter(id=storyId[it]).update(score=r)    
+                if(r>largest):
+                    largest=r
+                    root = Entry.objects.get(id=storyId[it])
+                    root.duplicate_of=None
+                    root.save()
+            for it in members[0]:
+                p = Entry.objects.get(id=storyId[it]) 
+                if (p!=root):
+                    p.duplicate_of=root
+                    p.save()
+        print('\x1b[1;31m'+"Overall time in  in %fs" % (time() - t0)+'\x1b[0m')
 
-                    
-          #updateCluster
-
-
+        
