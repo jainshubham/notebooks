@@ -38,6 +38,7 @@ class Command(BaseCommand):
         t0= time()
         discardedStories = 0
         item = Entry.objects.order_by("-approved_on")[:4800]
+        Entry.objects.update(duplicate_of=None)
         #storySoup= str(item[i].title+item[i].section+item[i].topic+item[i].industry+item[i].body_html+item[i].primary_topic+item[i].primary_industry+item[i].auto_tagged_topic+item[i].auto_tagged_industry)
         storySoup = item.values_list('body_html', flat=True)
         storyTitle = item.values_list('title', flat=True)
@@ -69,7 +70,6 @@ class Command(BaseCommand):
         print('\x1b[1;31m'+"Stories Clustered in  in %fs" % (time() - t0)+'\x1b[0m')
 
         # score and cluster items
-        Entry.objects.update(duplicate_of=None)
         for k in np.unique(km.labels_):
             if(not math.isnan(k)):
                 members = np.where(km.labels_ == k) 
@@ -89,7 +89,6 @@ class Command(BaseCommand):
                     largest=score
                     root = entry
                 entry.save(doNotSaveDuplicateChildren=True)
-            root = entry
             for it in members[0]:
                 entry = Entry.objects.get(id=storyId[it]) 
                 if (entry!=root):
