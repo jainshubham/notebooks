@@ -14,6 +14,7 @@ import pandas as pd
 from random import random
 import nltk
 import math
+import settings
 
 
 class Command(BaseCommand):
@@ -36,7 +37,7 @@ class Command(BaseCommand):
         from entry.models import Entry
         t0= time()
         discardedStories = 0
-        item = Entry.objects.order_by("-approved_on")[:400]
+        item = Entry.objects.order_by("-approved_on")[:4800]
         #storySoup= str(item[i].title+item[i].section+item[i].topic+item[i].industry+item[i].body_html+item[i].primary_topic+item[i].primary_industry+item[i].auto_tagged_topic+item[i].auto_tagged_industry)
         storySoup = item.values_list('body_html', flat=True)
         storyTitle = item.values_list('title', flat=True)
@@ -61,35 +62,46 @@ class Command(BaseCommand):
         # Do the actual clustering
         nc = int(len(storySoup)*.50)
         km = MiniBatchKMeans(n_clusters= nc, max_iter=100, n_init=5, compute_labels=True, init_size=int(nc*3), batch_size=int(nc*.02), reassignment_ratio=.1, verbose=False).fit(X)
+        d = km.transform(X)
         #km = KMeans(n_clusters=nc, init='k-means++', max_iter=100, n_init=10, verbose=True).fit(X)
         labels = km.labels_
         labels_pred = km.labels_
         print('\x1b[1;31m'+"Stories Clustered in  in %fs" % (time() - t0)+'\x1b[0m')
 
-        # cluster items
+        # score and cluster items
+        Entry.objects.update(duplicate_of=None)
         for k in np.unique(km.labels_):
             if(not math.isnan(k)):
-                members = np.where(km.labels_ == k)  
+                members = np.where(km.labels_ == k) 
             if k == -1:
                 #print("outliers:")
                 continue    
-            else:
-                pass
             largest = 0
             for it in members[0]:
-                r = random()
-                #r = getScore()
-                o = Entry.objects.order_by("-approved_on").filter(id=storyId[it]).update(score=r)    
-                if(r>largest):
-                    largest=r
-                    root = Entry.objects.get(id=storyId[it])
-                    root.duplicate_of=None
-                    root.save()
+                score = 0
+                entry = Entry.objects.get(id=storyId[it]) 
+                #score += (6-Entry.intra_publication_status_precedence.index(entry.status))/float(6)   #intra_publication_status_precedence
+                score += (((datetime.now() - entry.created_on).total_seconds() // 3600)-190)/24 # Weight for story age
+                score += min(d[it])
+                #print(score, entry.id)
+                entry.score = score
+                if(score>largest):
+                    largest=score
+                    root = entry
+                entry.save(doNotSaveDuplicateChildren=True)
+            root = entry
             for it in members[0]:
-                p = Entry.objects.get(id=storyId[it]) 
-                if (p!=root):
-                    p.duplicate_of=root
-                    p.save()
-        print('\x1b[1;31m'+"Overall time in  in %fs" % (time() - t0)+'\x1b[0m')
+                entry = Entry.objects.get(id=storyId[it]) 
+                if (entry!=root):
+                    entry.duplicate_of=root
+                    entry.status = root.status
+                    entry.priority = root.priority
+                    if (entry.approved_by_id is None or entry.approved_by_id == settings.SYSTEM_ADMIN_USER_ID) and entry.status in [2, -1, 5, 6]:
+                        entry.approved_on = datetime.now()
+                        entry.approved_by_id = settings.SYSTEM_ADMIN_USER_ID
+                    entry.primary_topic_id = root.primary_topic_id
+                    entry.primary_industry_id = root.primary_industry_id
+                    entry.copy_tags_and_sentiment_from(root, copyOnlySemanticTags=True)
+                    entry.save(doNotSaveDuplicateChildren=True)
+        print('\x1b[1;31m'+"Overall time taken %fs" % (time() - t0)+'\x1b[0m')
 
-        
