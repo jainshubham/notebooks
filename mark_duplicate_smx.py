@@ -24,7 +24,8 @@ class Command(BaseCommand):
         t0= time()
         
         item = Entry.objects.order_by("approved_on")[:500]
-        print(len(item.values_list()))
+        size = (len(item.values_list()))
+        #print(size)
         storyCols = item.values_list('title', 'body_html')
         storyBody = [''.join(cols[1]) for cols in storyCols]
         storyTitle = [''.join(cols[0]) for cols in storyCols]
@@ -50,34 +51,34 @@ class Command(BaseCommand):
         X = csr_matrix(X_lsa_body)
         document_distances_lsa_body = (X * X.T)
         
-        distance_matrix = [None] * 500
+        clusterList = [None] * size
         cluster = 0
-        for i in range(500):
-            for j in range(i,500):
+        for i in range(size):
+            for j in range(i,size):
                 s  = max(document_distances_title[i, j], document_distances_body[i, j], document_distances_lsa_body[i,j]/2)
                 if(s>similarityThreshold and i!=j):
                         #print(storyTitle[i])
                         #print(storyTitle[j])
                         #print(s, i, j)
-                        distance_matrix[j] = cluster
-            if(distance_matrix[i] == None):
-                distance_matrix[i] = cluster    
+                        clusterList[j] = cluster
+            if(clusterList[i] == None):
+                clusterList[i] = cluster    
             cluster += 1  
-        print('\x1b[1;31m'+"Distance Matrix calculated in %fs" % (time() - t0)+'\x1b[0m')
+        print('\x1b[1;31m'+"Cluster List calculated in %fs" % (time() - t0)+'\x1b[0m')
 
         #creating a dict iterator form the cluster
         clusteredDict = {}
-        for l in range(len(distance_matrix)):
+        print(len(clusterList))
+        for l in range(len(clusterList)):
             try:
-                clusteredDict[distance_matrix[l]].append(item[l])
+                clusteredDict[clusterList[l]].append(item[l])
             except:
-                clusteredDict.setdefault(distance_matrix[l], [item[l]])
-        print('\x1b[1;31m'+"Distance Matrix calculated in %fs" % (time() - t0)+'\x1b[0m')
+                clusteredDict.setdefault(clusterList[l], [item[l]])
+        print('\x1b[1;31m'+"Cluster Dict in %fs" % (time() - t0)+'\x1b[0m')
 
         #Finding root and autotagging
         for cluster in clusteredDict.values():
-            #print("\n")
-            if(distance_matrix[l]!=-1):
+            if(clusterList[l]!=-1):
                 largest = 0
                 for story in cluster:
                     score = (datetime.now() - story.created_on).total_seconds()     
