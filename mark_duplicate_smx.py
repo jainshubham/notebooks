@@ -14,7 +14,6 @@ import settings
 
 class Command(BaseCommand):
 
-
     def handle(self, *args, **options):
         from entry.models import Entry
         similarityThreshold = 0.465
@@ -23,14 +22,13 @@ class Command(BaseCommand):
         end_date_comparision = start_date - timedelta(hours=48)
         t0= time()
         
-        item = Entry.objects.order_by("approved_on")[:5000]
-        size = (len(item.values_list()))
-        #print(size)
-        storyCols = item.values_list('title', 'body_html')
+        item = Entry.objects.order_by("approved_on")
+        itemList = item[:2000]
+        size = len(itemList)
+        print(size)
+        storyCols = itemList.values_list('title', 'body_html')
         storyBody = [''.join(cols[1]) for cols in storyCols]
         storyTitle = [''.join(cols[0]) for cols in storyCols]
-        storyId = item.values_list('id', flat=True)
-
 
         hasher = TfidfVectorizer(stop_words='english', token_pattern=u'(?u)[a-zA-Z0-9]+',  ngram_range = (1,3), max_df=.99)
         X_body = hasher.fit_transform(storyBody)
@@ -51,6 +49,8 @@ class Command(BaseCommand):
         X = csr_matrix(X_lsa_body)
         document_distances_lsa_body = (X * X.T)
         
+        print('\x1b[1;31m'+"ML part completed in %fs" % (time() - t0)+'\x1b[0m')
+
         clusterList = [None] * size
         cluster = 0
         for i in range(size):
@@ -70,9 +70,6 @@ class Command(BaseCommand):
     
         #creating a dict iterator form the cluster
         clusteredDict = {}
-        itemList = item[:size]
-        print(len(itemList))
-
         print(len(clusterList))
         for l in range(len(clusterList)):
             try:
