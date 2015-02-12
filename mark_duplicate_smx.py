@@ -25,7 +25,7 @@ class Command(BaseCommand):
         t0= time()
         
         item = Entry.objects.order_by("approved_on")
-        itemList = item[:2000]
+        itemList = item[:200]
         size = len(itemList)
         print(size)
         storyCols = itemList.values_list('title', 'body_html')
@@ -52,26 +52,32 @@ class Command(BaseCommand):
         document_distances_lsa_body = (X * X.T)
         
         print('\x1b[1;31m'+"ML part completed in %fs" % (time() - t0)+'\x1b[0m')
-        
+        """
         document_distances = np.maximum(document_distances_title.toarray(), document_distances_body.toarray(), document_distances_lsa_body.toarray())
         nc = int(size*.49)
         km = MiniBatchKMeans(n_clusters= nc, max_iter=100, n_init=5, compute_labels=True, init_size=int(nc*3), batch_size=int(nc*.02), reassignment_ratio=.9, verbose=False).fit(X)
         clusterList = km.labels_
         """
+        
+        document_distances = np.maximum(document_distances_title.toarray(), document_distances_body.toarray(), document_distances_lsa_body.toarray())
+
         clusterList = [None] * size
-        cluster = 0
+        scoreList = [0] * size
+        print(size)
         for i in range(size):
+            count = 1
             for j in range(i,size):
-                s  = max(document_distances_title[i, j], document_distances_body[i, j], document_distances_lsa_body[i,j]/2)
+                s = document_distances[i,j]
+                scoreList[i] += document_distances[i,j] 
                 if(s>similarityThreshold and i!=j):
-                        #print(storyTitle[i])
-                        #print(storyTitle[j])
-                        #print(s, i, j)
-                        clusterList[j] = cluster
-            if(clusterList[i] == None):
-                clusterList[i] = cluster    
-            cluster += 1 
-        """
+                        clusterList[j] = i
+                        count = count + 1 
+                if(clusterList[j] == None):
+                    clusterList[j] = j 
+        print('\x1b[1;31m'+"Cluster List calculated in %fs" % (time() - t0)+'\x1b[0m')
+                
+        
+
         print('\x1b[1;31m'+"Cluster List calculated in %fs" % (time() - t0)+'\x1b[0m')
 
         #creating a dict iterator form the cluster
