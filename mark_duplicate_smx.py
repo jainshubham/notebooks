@@ -7,6 +7,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import Normalizer
 from scipy.sparse import csr_matrix
+from sklearn.cluster import KMeans, MiniBatchKMeans
+import numpy as np
 import logging
 
 import settings
@@ -50,7 +52,12 @@ class Command(BaseCommand):
         document_distances_lsa_body = (X * X.T)
         
         print('\x1b[1;31m'+"ML part completed in %fs" % (time() - t0)+'\x1b[0m')
-
+        
+        document_distances = np.maximum(document_distances_title.toarray(), document_distances_body.toarray(), document_distances_lsa_body.toarray())
+        nc = int(size*.49)
+        km = MiniBatchKMeans(n_clusters= nc, max_iter=100, n_init=5, compute_labels=True, init_size=int(nc*3), batch_size=int(nc*.02), reassignment_ratio=.9, verbose=False).fit(X)
+        clusterList = km.labels_
+        """
         clusterList = [None] * size
         cluster = 0
         for i in range(size):
@@ -63,11 +70,10 @@ class Command(BaseCommand):
                         clusterList[j] = cluster
             if(clusterList[i] == None):
                 clusterList[i] = cluster    
-            cluster += 1  
+            cluster += 1 
+        """
         print('\x1b[1;31m'+"Cluster List calculated in %fs" % (time() - t0)+'\x1b[0m')
-        
- 
-    
+
         #creating a dict iterator form the cluster
         clusteredDict = {}
         print(len(clusterList))
