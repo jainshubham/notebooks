@@ -23,7 +23,7 @@ class Command(BaseCommand):
         end_date_comparision = start_date - timedelta(hours=48)
         t0= time()
         
-        item = Entry.objects.order_by("approved_on")[:500]
+        item = Entry.objects.order_by("approved_on")[:5000]
         size = (len(item.values_list()))
         #print(size)
         storyCols = item.values_list('title', 'body_html')
@@ -65,15 +65,20 @@ class Command(BaseCommand):
                 clusterList[i] = cluster    
             cluster += 1  
         print('\x1b[1;31m'+"Cluster List calculated in %fs" % (time() - t0)+'\x1b[0m')
-
+        
+ 
+    
         #creating a dict iterator form the cluster
         clusteredDict = {}
+        itemList = item[:size]
+        print(len(itemList))
+
         print(len(clusterList))
         for l in range(len(clusterList)):
             try:
-                clusteredDict[clusterList[l]].append(item[l])
+                clusteredDict[clusterList[l]].append(itemList[l])
             except:
-                clusteredDict.setdefault(clusterList[l], [item[l]])
+                clusteredDict.setdefault(clusterList[l], [itemList[l]])
         print('\x1b[1;31m'+"Cluster Dict in %fs" % (time() - t0)+'\x1b[0m')
 
         #Finding root and autotagging
