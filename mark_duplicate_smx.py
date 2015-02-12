@@ -19,11 +19,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         from entry.models import Entry
         similarityThreshold = 0.465
-
+        
         start_date = datetime.now()
         end_date_comparision = start_date - timedelta(hours=48)
         t0= time()
-
+        
         item = Entry.objects.order_by("approved_on")
         itemList = item[:500]
         size = len(itemList)
@@ -34,7 +34,7 @@ class Command(BaseCommand):
 
         hasher = TfidfVectorizer(stop_words='english', token_pattern=u'(?u)[a-zA-Z0-9]+',  ngram_range = (1,3), max_df=.99)
         X_body = hasher.fit_transform(storyBody)
-
+        
         thasher = TfidfVectorizer(stop_words="english", token_pattern=u'(?u)[a-zA-Z0-9]+', ngram_range = (1,3), max_df=0.005)
         X_title = thasher.fit_transform(storyTitle)
 
@@ -44,13 +44,13 @@ class Command(BaseCommand):
 
         X = csr_matrix(X_title)
         document_distances_title = (X * X.T)
-
+        
         X = csr_matrix(X_body)
         document_distances_body = (X * X.T)
-
+        
         X = csr_matrix(X_lsa_body)
         document_distances_lsa_body = (X * X.T)
-
+        
         print('\x1b[1;31m'+"ML part completed in %fs" % (time() - t0)+'\x1b[0m')
         """
         document_distances = np.maximum(document_distances_title.toarray(), document_distances_body.toarray(), document_distances_lsa_body.toarray())
@@ -58,26 +58,27 @@ class Command(BaseCommand):
         km = MiniBatchKMeans(n_clusters= nc, max_iter=100, n_init=5, compute_labels=True, init_size=int(nc*3), batch_size=int(nc*.02), reassignment_ratio=.9, verbose=False).fit(X)
         clusterList = km.labels_
         """
-
+        
         document_distances = np.maximum(document_distances_title.toarray(), document_distances_body.toarray(), document_distances_lsa_body.toarray())
 
         clusterList = [None] * size
         scoreList = [0] * size
         print(size)
-        for i in xrange(size):
+        for i in range(size):
             count = 1
             for j in xrange(i,size):
                 s = document_distances[i,j]
-                scoreList[i] += document_distances[i,j]
-                if(i!=j or (document_distances_title[i,j]!=0 and document_distances_body[i,j]>.75)):
-                    if((document_distances_title[i,j]>0.4 or document_distances_body[i,j]>.42 or document_distances_lsa_body[i,j]>0.999)):
+                scoreList[i] += document_distances[i,j] 
+                if((i!=j) and 
+                (document_distances_title[i,j]==0 and document_distances_body[i,j]>.70) and 
+                (document_distances_title[i,j]>0.4 or document_distances_body[i,j]>.42 or document_distances_lsa_body[i,j]>0.999)):
                             clusterList[j] = i
-                            count = count + 1
+                            count = count + 1 
                 if(clusterList[j] == None):
-                    clusterList[j] = j
+                    clusterList[j] = j 
         print('\x1b[1;31m'+"Cluster List calculated in %fs" % (time() - t0)+'\x1b[0m')
-
-
+                
+        
 
         print('\x1b[1;31m'+"Cluster List calculated in %fs" % (time() - t0)+'\x1b[0m')
 
@@ -85,7 +86,7 @@ class Command(BaseCommand):
         clusteredDict = {}
         scoreDict = {}
         print(len(clusterList))
-        for l in xrange(len(clusterList)):
+        for l in range(len(clusterList)):
             try:
                 clusteredDict[clusterList[l]].append([itemList[l],scoreList[l]])
             except:
