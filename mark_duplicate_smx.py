@@ -82,37 +82,37 @@ class Command(BaseCommand):
 
         #creating a dict iterator form the cluster
         clusteredDict = {}
+        scoreDict = {}
         print(len(clusterList))
         for l in range(len(clusterList)):
             try:
-                clusteredDict[clusterList[l]].append(itemList[l])
+                clusteredDict[clusterList[l]].append([itemList[l],scoreList[l]])
             except:
-                clusteredDict.setdefault(clusterList[l], [itemList[l]])
+                clusteredDict.setdefault(clusterList[l], [[itemList[l], scoreList[l]]])        
         print('\x1b[1;31m'+"Cluster Dict in %fs" % (time() - t0)+'\x1b[0m')
 
+
         #Finding root and autotagging
-        for cluster in clusteredDict.values():
-            if(clusterList[l]!=-1):
+        for cluster  in clusteredDict.values():
+            if(len(cluster)>1):
                 largest = 0
                 for story in cluster:
-                    score = (datetime.now() - story.created_on).total_seconds()     
-                    #score += min(d[it])     # score from clustering
-                    #story.score = score
-                    #if(len(cluster)>1 and len(cluster)<5):
-                    #   print(story.title)
+                    score = (datetime.now() - story[0].created_on).total_seconds()   
+                    score = story[1]
+                    #print(story[0].title, score)
                     if(score>largest):
                             largest=score
-                            root=story
+                            root=story[0]
                 for story in cluster:
-                    if (story.id!=root.id):
-                        story.duplicate_of=root
-                        story.status = root.status
-                        story.priority = root.priority
-                        if (story.approved_by_id is None) and story.status in [2, -1, 5, 6]:
-                            story.approved_on = datetime.now()
-                            story.approved_by_id = settings.SYSTEM_ADMIN_USER_ID
-                        story.primary_topic_id = root.primary_topic_id
-                        story.primary_industry_id = root.primary_industry_id
-                        story.copy_tags_and_sentiment_from(root, copyOnlySemanticTags=True)
-                        story.save(doNotSaveDuplicateChildren=True)
+                    if (story[0].id!=root.id):
+                        story[0].duplicate_of=root
+                        story[0].status = root.status
+                        story[0].priority = root.priority
+                        if (story[0].approved_by_id is None) and story[0].status in [2, -1, 5, 6]:
+                            story[0].approved_on = datetime.now()
+                            story[0].approved_by_id = settings.SYSTEM_ADMIN_USER_ID
+                        story[0].primary_topic_id = root.primary_topic_id
+                        story[0].primary_industry_id = root.primary_industry_id
+                        story[0].copy_tags_and_sentiment_from(root, copyOnlySemanticTags=True)
+                        story[0].save(doNotSaveDuplicateChildren=True)
         print('\x1b[1;31m'+"Overall time taken %fs" % (time() - t0)+'\x1b[0m')
